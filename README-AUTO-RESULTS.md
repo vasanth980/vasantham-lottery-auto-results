@@ -51,9 +51,9 @@ A failed verification returns HTTP 502 and `verified: false`. Do not bypass this
 
 ## Deployment checks
 
-1. Push the updated source files, including `Dockerfile` and `.dockerignore`, to the GitHub repository.
+1. Push the updated source files, including `Dockerfile`, to the GitHub repository.
 2. In Render, configure the existing web service to use the **Docker** runtime / Dockerfile build.
-3. Keep the existing `BROWSERLESS_TOKEN` environment variable configured for PDF generation.
+3. Add `BROWSERLESS_TOKEN` in Render only if you use the `/generate-pdf` endpoint; it is not needed for automatic lottery-result fetching or image downloads.
 4. Deploy the service.
 5. Open `/api/results/latest` and confirm it returns `verified: true` for a published draw.
 6. Open the website, wait for the verification status, enter ticket ranges, and click **Check Results**.

@@ -19,12 +19,21 @@
     </header>
 
     <div class="container">
-        <!-- 🔷 PASTE RESULT CARD -->
+        <!-- Automatic verified result fetch -->
         <div class="card fade-in">
-            <h2>Paste Full Draw Result</h2>
+            <h2>Latest Lottery Result</h2>
+            <p class="result-help">Fetch the latest result and verify it against the official Kerala LOTIS publication.</p>
+            <button class="fetch-btn" id="fetchLatestBtn" type="button" onclick="loadLatestResult()">
+                Fetch Latest Verified Result
+            </button>
+            <p id="fetchStatus" class="fetch-status" role="status" aria-live="polite">Ready to fetch the latest result.</p>
+            <div id="drawInfo" class="draw-info" hidden></div>
 
-            <textarea id="resultText" placeholder="Paste full result text here..." class="result-textarea"></textarea>
-
+            <details class="manual-entry">
+                <summary>Enter result manually instead</summary>
+                <textarea id="resultText" placeholder="Paste full result text here..." class="result-textarea"></textarea>
+                <button class="manual-check-btn" type="button" onclick="checkResults()">Check Pasted Result</button>
+            </details>
         </div>
         <!-- 🔷 RANGE CARD -->
         <div class="card fade-in">
@@ -65,7 +74,7 @@
                     <div class="result-sheet">
 
                         <p class="empty-message">
-                            No results yet. Paste and check.
+                            No results yet. Fetch the latest verified result.
                         </p>
 
                     </div>
