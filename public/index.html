@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vasantham Lucky Center</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+</head>
+
+<body>
+
+    <!-- 🔷 HEADER -->
+    <header class="header">
+        <h1>Vasantham Lucky Center</h1>
+        <p>Smart Range Matching & Result Highlight</p>
+    </header>
+
+    <div class="container">
+        <!-- 🔷 PASTE RESULT CARD -->
+        <div class="card fade-in">
+            <h2>Paste Full Draw Result</h2>
+
+            <textarea id="resultText" placeholder="Paste full result text here..." class="result-textarea"></textarea>
+
+        </div>
+        <!-- 🔷 RANGE CARD -->
+        <div class="card fade-in">
+            <h2>Select Ticket Ranges</h2>
+
+            <div id="rangeContainer">
+                <div class="range-row">
+
+                    <input type="number" placeholder="Start Number" class="start" />
+                    <input type="number" placeholder="End Number" class="end" />
+                    <button class="add-btn" onclick="addRange()">+</button>
+                </div>
+            </div>
+
+            <button class="check-btn" onclick="checkResults()">Check Results</button>
+        </div>
+
+        <!-- <img src="${window.location.origin}/images/vasanthamcontactbanner.png" class="header-img" />-->
+        <!-- 🔷 RESULT CARD -->
+        <div class="card fade-in">
+            <div class="result-header">
+                <h2>Results</h2>
+
+                <div class="download-buttons">
+
+                    <button class="download-btn image" id="downloadImageBtn" style="background-color: #32cf17;"
+                        onclick="downloadImage()" disabled>
+                        ⤓ Download Image
+                    </button>
+                </div>
+            </div>
+
+            <!-- 🔷 RESULT CONTAINER (NEW STRUCTURE) -->
+            <div id="resultContainer" class="letterpad">
+
+                <div id="resultContent" class="result-content">
+
+                    <div class="result-sheet">
+
+                        <p class="empty-message">
+                            No results yet. Paste and check.
+                        </p>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
