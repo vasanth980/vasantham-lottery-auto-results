@@ -1,4 +1,51 @@
 // ===============================
+// FETCH LATEST VERIFIED RESULT
+// ===============================
+async function loadLatestResult() {
+    const button = document.getElementById("fetchLatestBtn");
+    const status = document.getElementById("fetchStatus");
+    const drawInfo = document.getElementById("drawInfo");
+    const textArea = document.getElementById("resultText");
+
+    button.disabled = true;
+    button.textContent = "Fetching and verifying...";
+    status.className = "fetch-status loading";
+    status.textContent = "Contacting the result API and checking the official LOTIS publication...";
+    drawInfo.hidden = true;
+    drawInfo.textContent = "";
+
+    try {
+        const response = await fetch("/api/results/latest", {
+            method: "GET",
+            headers: { "Accept": "application/json" },
+            cache: "no-store"
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.verified || !data.resultText) {
+            const reason = data.message || "The result could not be verified.";
+            throw new Error(reason);
+        }
+
+        textArea.value = data.resultText;
+        status.className = "fetch-status success";
+        status.textContent = "Official verification successful. You can now check your ticket ranges.";
+        drawInfo.hidden = false;
+        drawInfo.textContent = `${data.drawName} | Draw: ${data.drawCode} | Date: ${data.drawDate} | Verified: ${new Date(data.verifiedAt).toLocaleString()}`;
+
+        // Reuse the existing result parsing, range matching and image rendering.
+        checkResults();
+    } catch (error) {
+        status.className = "fetch-status error";
+        status.textContent = `Automatic result unavailable: ${error.message}`;
+        console.error("Automatic result fetch failed:", error);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Fetch Latest Verified Result";
+    }
+}
+
+// ===============================
 // 🔷 DEBUG LOGGER
 // ===============================
 function debug(label, value) {
@@ -278,3 +325,7 @@ async function downloadImage() {
     link.download = `Vasantham-Lottery-Result -${formattedDate}.png`;
     link.click();
 }
+// Automatically attempt to load the latest verified draw when the page opens.
+document.addEventListener("DOMContentLoaded", () => {
+    loadLatestResult();
+});
