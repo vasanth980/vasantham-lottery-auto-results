@@ -22,11 +22,16 @@
         <!-- Automatic verified result fetch -->
         <div class="card fade-in">
             <h2>Latest Lottery Result</h2>
-            <p class="result-help">Fetch the latest result and verify it against the official Kerala LOTIS publication.</p>
-            <button class="fetch-btn" id="fetchLatestBtn" type="button" onclick="loadLatestResult()">
+            <p class="result-help">Select a draw date to fetch its result and verify it against the official Kerala lottery publication.</p>
+            <div class="date-fetch-row">
+                <label for="drawDate">Lottery draw date</label>
+                <input type="date" id="drawDate" />
+                <button class="fetch-btn" id="fetchDateBtn" type="button" onclick="loadResultByDate()">Fetch Result</button>
+            </div>
+            <button class="fetch-btn secondary-fetch-btn" id="fetchLatestBtn" type="button" onclick="loadLatestResult()">
                 Fetch Latest Verified Result
             </button>
-            <p id="fetchStatus" class="fetch-status" role="status" aria-live="polite">Ready to fetch the latest result.</p>
+            <p id="fetchStatus" class="fetch-status" role="status" aria-live="polite">Select a date and fetch its result.</p>
             <div id="drawInfo" class="draw-info" hidden></div>
 
             <details class="manual-entry">
@@ -74,7 +79,7 @@
                     <div class="result-sheet">
 
                         <p class="empty-message">
-                            No results yet. Fetch the latest verified result.
+                            No results yet. Select a draw date and fetch a verified result.
                         </p>
 
                     </div>
