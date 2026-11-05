@@ -66,3 +66,11 @@ The page now supports selecting a draw date. The backend calls the Kerala result
 The official source list includes the LOTIS public listing and the `result.keralalotteries.com` public results archive. Server logs now include the URL and network/HTTP failure reason for each source, which makes Render fetch failures easier to diagnose. A date with no published result, or a result that cannot be verified against the official publication, is not displayed as verified.
 
 The existing latest-result button, manual result entry, ticket-range matching, image generation, and PDF endpoint are retained. PDF generation still requires `BROWSERLESS_TOKEN` in the Render environment.
+
+### Official source and TLS handling
+
+The verifier prioritizes the public LOTIS listing at `lotteryagent.kerala.gov.in`.
+The `result.keralalotteries.com` host is intentionally not used while it reports
+an expired TLS certificate. TLS certificate verification remains enabled; do
+not set `NODE_TLS_REJECT_UNAUTHORIZED=0`. The LOTIS listing matcher accepts both
+`DD-MM-YYYY` and `DD/MM/YYYY` date formats and matches the draw code separately.
