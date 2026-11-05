@@ -3,7 +3,8 @@ const { execFileSync } = require("node:child_process");
 const API_BASE = "https://indialotteryapi.com/wp-json/klr/v1";
 const OFFICIAL_LISTING_URLS = [
   process.env.OFFICIAL_RESULTS_URL || "https://www.lotteryagent.kerala.gov.in/result/public/",
-  "https://portal.keralalotteries.in/weblotteryresult.php"
+  "https://result.keralalotteries.com/",
+  "https://result.keralalotteries.com/weblotteryresult.php"
 ];
 
 const PRIZE_KEYS = [
@@ -19,21 +20,37 @@ const PRIZE_KEYS = [
   ["9th", "9th Prize"]
 ];
 
+function describeFetchError(error) {
+  const cause = error && error.cause;
+  const code = cause && cause.code ? ` (${cause.code})` : "";
+  if (error && error.name === "TimeoutError") return "request timed out after 20 seconds";
+  return `${error && error.message ? error.message : "network request failed"}${code}`;
+}
+
 async function fetchText(url) {
-  const response = await fetch(url, {
-    headers: { "User-Agent": "VasanthamLotteryResultChecker/1.0", Accept: "text/html,application/json,*/*" },
-    signal: AbortSignal.timeout(20000)
-  });
-  if (!response.ok) throw new Error(`Source returned HTTP ${response.status}`);
-  return response.text();
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "VasanthamLotteryResultChecker/1.1", Accept: "text/html,application/json,*/*" },
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.text();
+  } catch (error) {
+    throw new Error(`${url}: ${describeFetchError(error)}`);
+  }
 }
 
 async function fetchOfficialDocument(url) {
-  const response = await fetch(url, {
-    headers: { "User-Agent": "VasanthamLotteryResultChecker/1.0", Accept: "application/pdf,text/html,*/*" },
-    signal: AbortSignal.timeout(20000)
-  });
-  if (!response.ok) throw new Error(`Official result returned HTTP ${response.status}`);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { "User-Agent": "VasanthamLotteryResultChecker/1.1", Accept: "application/pdf,text/html,*/*" },
+      signal: AbortSignal.timeout(20000)
+    });
+  } catch (error) {
+    throw new Error(`${url}: ${describeFetchError(error)}`);
+  }
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
 
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -58,12 +75,21 @@ async function fetchOfficialDocument(url) {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "VasanthamLotteryResultChecker/1.0" },
-    signal: AbortSignal.timeout(20000)
-  });
-  if (!response.ok) throw new Error(`Third-party API returned HTTP ${response.status}`);
-  return response.json();
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": "VasanthamLotteryResultChecker/1.1" },
+      signal: AbortSignal.timeout(20000)
+    });
+  } catch (error) {
+    throw new Error(`Third-party API ${url}: ${describeFetchError(error)}`);
+  }
+  if (!response.ok) {
+    if (response.status === 404) throw new Error("No lottery result is available for the selected date yet.");
+    throw new Error(`Third-party API ${url}: HTTP ${response.status}`);
+  }
+  try { return await response.json(); }
+  catch { throw new Error(`Third-party API ${url}: response was not valid JSON.`); }
 }
 
 function cleanToken(value) {
@@ -226,24 +252,28 @@ function toLegacyResultText(draw) {
     }).join("\n\n");
 }
 
-async function getVerifiedLatestResult() {
-  const apiRaw = await fetchJson(`${API_BASE}/latest`);
+async function getVerifiedResult(apiUrl, requestedDate = null) {
+  const apiRaw = await fetchJson(apiUrl);
   const apiDraw = normalizeApiResult(apiRaw);
+
+  if (requestedDate && apiDraw.drawDate !== requestedDate) {
+    throw new Error(`The API returned ${apiDraw.drawDate}, not the selected date ${requestedDate}. No result was displayed.`);
+  }
 
   let officialUrl = null;
   let officialListingUrl = null;
   let officialHtml = null;
   const sourceErrors = [];
 
-  // Start with the public LOTIS results page, then use the Department's
-  // official result portal for its draw-specific result document.
   for (const listingUrl of OFFICIAL_LISTING_URLS) {
     try {
       const listingHtml = await fetchText(listingUrl);
       const candidateUrl = findOfficialResultUrl(listingHtml, apiDraw, listingUrl);
-      if (!candidateUrl) continue;
+      if (!candidateUrl) {
+        sourceErrors.push(`${listingUrl}: draw ${apiDraw.drawCode} dated ${apiDraw.drawDate} was not listed`);
+        continue;
+      }
       const candidateHtml = await fetchOfficialDocument(candidateUrl);
-      // Parse now so an unrelated/unsupported link does not block fallback.
       parseOfficialResult(candidateHtml, apiDraw);
       officialUrl = candidateUrl;
       officialListingUrl = listingUrl;
@@ -255,7 +285,7 @@ async function getVerifiedLatestResult() {
   }
 
   if (!officialUrl || !officialHtml) {
-    const detail = sourceErrors.length ? ` Sources: ${sourceErrors.join("; ")}` : "";
+    const detail = sourceErrors.length ? ` Sources checked: ${sourceErrors.join(" | ")}` : "";
     throw new Error(`The official LOTIS result for ${apiDraw.drawCode} (${apiDraw.drawDate}) could not be located and read. The result has not been verified.${detail}`);
   }
 
@@ -276,13 +306,22 @@ async function getVerifiedLatestResult() {
     drawDate: apiDraw.drawDate,
     prizes: apiDraw.prizes,
     resultText: toLegacyResultText(apiDraw),
-    sources: {
-      thirdPartyApi: `${API_BASE}/latest`,
-      officialListing: officialListingUrl,
-      officialResult: officialUrl
-    },
+    sources: { thirdPartyApi: apiUrl, officialListing: officialListingUrl, officialResult: officialUrl },
     verifiedAt: new Date().toISOString()
   };
 }
 
-module.exports = { getVerifiedLatestResult };
+async function getVerifiedLatestResult() {
+  return getVerifiedResult(`${API_BASE}/latest`);
+}
+
+async function getVerifiedResultByDate(date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Please select a valid date in YYYY-MM-DD format.");
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new Error("The selected date is invalid.");
+  }
+  return getVerifiedResult(`${API_BASE}/by-date?date=${encodeURIComponent(date)}`, date);
+}
+
+module.exports = { getVerifiedLatestResult, getVerifiedResultByDate };

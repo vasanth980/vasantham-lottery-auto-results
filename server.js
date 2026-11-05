@@ -1,7 +1,7 @@
 const express = require("express");
 const path = require("path");
 const puppeteer = require("puppeteer-core");
-const { getVerifiedLatestResult } = require("./lottery-results");
+const { getVerifiedLatestResult, getVerifiedResultByDate } = require("./lottery-results");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,6 +39,26 @@ app.get("/api/results/latest", async (_req, res) => {
       verified: false,
       verificationStatus: "NOT_VERIFIED",
       message: error.message || "The latest result could not be verified.",
+      details: error.details || null,
+      draw: error.draw || null
+    });
+  }
+});
+
+// Fetch and verify a result for an explicitly selected draw date.
+app.get("/api/results/by-date", async (req, res) => {
+  const date = String(req.query.date || "");
+  try {
+    const result = await getVerifiedResultByDate(date);
+    res.set("Cache-Control", "no-store");
+    res.json(result);
+  } catch (error) {
+    console.error(`Result lookup failed for ${date || "(missing date)"}:`, error);
+    const notFound = /No lottery result is available/i.test(error.message);
+    res.status(notFound ? 404 : 502).json({
+      verified: false,
+      verificationStatus: "NOT_VERIFIED",
+      message: error.message || "The selected result could not be verified.",
       details: error.details || null,
       draw: error.draw || null
     });

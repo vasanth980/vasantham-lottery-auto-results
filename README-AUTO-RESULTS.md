@@ -58,3 +58,11 @@ A failed verification returns HTTP 502 and `verified: false`. Do not bypass this
 5. Open `/api/results/latest` and confirm it returns `verified: true` for a published draw.
 6. Open the website, wait for the verification status, enter ticket ranges, and click **Check Results**.
 7. Test the manual paste flow and image/PDF downloads to confirm the existing features still work.
+
+## Date-based result lookup and fetch diagnostics
+
+The page now supports selecting a draw date. The backend calls the Kerala results API `/by-date?date=YYYY-MM-DD`, confirms that the returned draw date is exactly the selected date, and then cross-checks the numbers against the official LOTIS/result publication before displaying anything.
+
+The official source list includes the LOTIS public listing and the `result.keralalotteries.com` public results archive. Server logs now include the URL and network/HTTP failure reason for each source, which makes Render fetch failures easier to diagnose. A date with no published result, or a result that cannot be verified against the official publication, is not displayed as verified.
+
+The existing latest-result button, manual result entry, ticket-range matching, image generation, and PDF endpoint are retained. PDF generation still requires `BROWSERLESS_TOKEN` in the Render environment.
