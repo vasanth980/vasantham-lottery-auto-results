@@ -1,4 +1,51 @@
 // ===============================
+// FETCH RESULT FOR SELECTED DATE
+// ===============================
+async function loadResultByDate() {
+    const dateInput = document.getElementById("drawDate");
+    const button = document.getElementById("fetchDateBtn");
+    const status = document.getElementById("fetchStatus");
+    const drawInfo = document.getElementById("drawInfo");
+    const textArea = document.getElementById("resultText");
+    const date = dateInput.value;
+
+    if (!date) {
+        status.className = "fetch-status error";
+        status.textContent = "Please select a lottery draw date.";
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Fetching and verifying...";
+    status.className = "fetch-status loading";
+    status.textContent = `Fetching the result for ${date} and checking the official publication...`;
+    drawInfo.hidden = true;
+
+    try {
+        const response = await fetch(`/api/results/by-date?date=${encodeURIComponent(date)}`, {
+            headers: { "Accept": "application/json" }, cache: "no-store"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.verified || !data.resultText) {
+            throw new Error(data.message || "The result could not be verified.");
+        }
+        textArea.value = data.resultText;
+        status.className = "fetch-status success";
+        status.textContent = "Official verification successful. You can now check your ticket ranges.";
+        drawInfo.hidden = false;
+        drawInfo.textContent = `${data.drawName} | Draw: ${data.drawCode} | Date: ${data.drawDate} | Verified: ${new Date(data.verifiedAt).toLocaleString()}`;
+        checkResults();
+    } catch (error) {
+        status.className = "fetch-status error";
+        status.textContent = `Result unavailable: ${error.message}`;
+        console.error("Date-based result fetch failed:", error);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Fetch Result";
+    }
+}
+
+// ===============================
 // FETCH LATEST VERIFIED RESULT
 // ===============================
 async function loadLatestResult() {
@@ -328,4 +375,12 @@ async function downloadImage() {
 // Automatically attempt to load the latest verified draw when the page opens.
 document.addEventListener("DOMContentLoaded", () => {
     loadLatestResult();
+});
+
+// Default the date picker to today's date in India Standard Time.
+document.addEventListener("DOMContentLoaded", () => {
+    const dateInput = document.getElementById("drawDate");
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    }
 });

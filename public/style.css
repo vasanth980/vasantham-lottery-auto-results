@@ -803,3 +803,11 @@ tr:hover {
     color: #fff;
     background: #315b9b;
 }
+
+
+/* Date-based result lookup */
+.date-fetch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; }
+.date-fetch-row label { font-weight: 600; }
+.date-fetch-row input[type="date"] { min-height: 42px; padding: 8px 10px; border: 1px solid #c9d3c8; border-radius: 7px; font: inherit; }
+.secondary-fetch-btn { margin-top: 4px; opacity: .9; }
+@media (max-width: 520px) { .date-fetch-row { align-items: stretch; flex-direction: column; } .date-fetch-row input[type="date"], .date-fetch-row button { width: 100%; box-sizing: border-box; } }
