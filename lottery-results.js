@@ -1,10 +1,12 @@
 const { execFileSync } = require("node:child_process");
 
 const API_BASE = "https://indialotteryapi.com/wp-json/klr/v1";
+// Use the LOTIS public listing first. The result.keralalotteries.com host
+// has intermittently presented an expired TLS certificate, so it is not used
+// as an automatic fallback until its certificate is valid again.
 const OFFICIAL_LISTING_URLS = [
   process.env.OFFICIAL_RESULTS_URL || "https://www.lotteryagent.kerala.gov.in/result/public/",
-  "https://result.keralalotteries.com/",
-  "https://result.keralalotteries.com/weblotteryresult.php"
+  "https://portal.keralalotteries.in/weblotteryresult.php"
 ];
 
 const PRIZE_KEYS = [
@@ -158,23 +160,34 @@ function htmlToText(html) {
     .trim();
 }
 
-function findOfficialResultUrl(listingHtml, draw, listingUrl) {
-  const rows = listingHtml.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi) || [];
-  const dateDmy = draw.drawDate.split("-").reverse().join("/");
-  const targetCode = draw.drawCode.replace(/\s+/g, "").toUpperCase();
+function normalizeDrawDate(value) {
+  const match = String(value || "").match(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})\b/);
+  if (!match) return null;
+  return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+}
 
-  for (const row of rows) {
-    const rowText = htmlToText(row).toUpperCase().replace(/\s+/g, " ");
-    const codeMatch = rowText.replace(/\s/g, "").includes(targetCode);
-    const dateMatch = rowText.includes(dateDmy);
+function findOfficialResultUrl(listingHtml, draw, listingUrl) {
+  const targetCode = draw.drawCode.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  const rows = listingHtml.match(/<(?:tr|li)\b[^>]*>[\s\S]*?<\/(?:tr|li)>/gi) || [];
+  const candidates = rows.length ? rows : [listingHtml];
+
+  for (const row of candidates) {
+    const rowText = htmlToText(row).toUpperCase();
+    const compactText = rowText.replace(/[^A-Z0-9]/g, "");
+    const codeMatch = compactText.includes(targetCode);
+    const rowDates = [...rowText.matchAll(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/g)]
+      .map(match => normalizeDrawDate(match[0]));
+    const dateMatch = rowDates.includes(draw.drawDate);
     if (!codeMatch || !dateMatch) continue;
+
     const hrefs = [...row.matchAll(/href\s*=\s*["']([^"']+)["']/gi)];
     for (const href of hrefs) {
       const target = decodeHtml(href[1]).replace(/&amp;/g, "&").trim();
       if (!target || target === "#" || /^javascript:/i.test(target)) continue;
       return new URL(target, listingUrl).href;
     }
-    const onclick = row.match(/(?:location\.href|window\.open)\s*\(?\s*["']([^"']+)["']/i);
+
+    const onclick = row.match(/(?:location(?:\.href)?|window\.open)\s*\(?\s*["']([^"']+)["']/i);
     if (onclick && !/^javascript:/i.test(onclick[1])) {
       return new URL(decodeHtml(onclick[1]), listingUrl).href;
     }
